@@ -36,9 +36,25 @@ julia> fieldtype(S, :x)
 Union{Missing, Int64}
 ```"""
 macro allowmissing(structdef)
-    postwalk(structdef) do exp
-        @capture(exp, fld_::typ_ = missing) ? :($fld::nullable($typ)) : exp
+    postwalk(structdef) do expr
+        @capture(expr, fld_::typ_ = missing) ? :($fld::nullable($typ)) : expr
     end
 end
 nullable(::Type{T}) where {T} = Union{T,Missing}
+
+generate(db::DB, genmodelname::Symbol, gentablename::Symbol) =
+    let res = db[From(gentablename)], gentablename = string(gentablename)
+        structdef = :(struct $genmodelname <: AbstractModel end)
+        fielddef(name, typ) = Missing <: typ ? :($name::$typ = missing) : :($name::$typ)
+        structdef.args[3].args = map(fielddef, res.names, res.types)  # fields
+        :((Base.@kwdef $structdef; FunnyORM.tablename(::Type{$genmodelname}) = Symbol($gentablename)))
+    end
+
+generate_string(db::DB, genmodelname::Symbol, gentablename::Symbol) =
+    let expr = Base.remove_linenums!(FunnyORM.generate(db, genmodelname, gentablename))
+        strip(replace(string(expr.args[1]) * "\n" * string(expr.args[2]), r"#=.*=#" => "", "\n    " => "\n"))
+    end
+
+precompile(generate, (DB, Symbol, Symbol))
+precompile(generate_string, (DB, Symbol, Symbol))
 

@@ -21,7 +21,7 @@ DB{T}(fname::String) where {T} = DB{T}(DBInterface.connect(FunSQL.DB{T}, fname),
 
 
 """```jldoctest
-julia> db[Query] = sqlresult
+julia> db[query::FunSQL.SQLNode] = sqlresult
 ```"""
 Base.getindex(db::DB, q::FunSQL.SQLNode) = DBInterface.execute(db.connection, q)
 
@@ -32,7 +32,7 @@ end
 # Base.getindex(::Type{T}) where {T<:AbstractModel} = From(tablename(T)),   # HERE
 Base.getindex(::Type{T}; kwargs...) where {T<:AbstractModel} = TableQuery{T}(T, kwargs)
 """```jldoctest
-julia> Movie[type="wha"] = tablequery
+julia> Movie[type="wha"] = query::FunSQL.SQLNode
 ```"""
 Base.convert(::Type{FunSQL.AbstractSQLNode}, tq::TableQuery{T}) where {T<:AbstractModel} =
     let kwargs = collect(tq.kwargs)
@@ -52,7 +52,7 @@ Base.convert(::Type{FunSQL.AbstractSQLNode}, tq::TableQuery{T}) where {T<:Abstra
 _unpack(::Type{T}, ntuple::NamedTuple) where {T<:AbstractModel} = T(ntuple...)
 
 """```jldoctest
-julia> db[Movie[type="wha"], sql=Where(true)] = modelresult
+julia> db[Movie[type="wha"], sql=Where(true)] = modelresult::Vector{Movie}
 ```"""
 Base.getindex(db::DB, tq::TableQuery{T}, sql::FunSQL.SQLNode=Where(true)) where {T<:AbstractModel} =
     _unpack.(T, Tables.rowtable(db[tq|>sql]))::Vector{T}
@@ -63,19 +63,5 @@ generate(db::DB, ::Type{T}) where {T<:AbstractModel} =
         3
     end
 
-generate(db::DB, genmodelname::Symbol, gentablename::Symbol) =
-    let res = db[From(gentablename)], gentablename = string(gentablename)
-        structdef = :(struct $genmodelname <: AbstractModel end)
-        fielddef(name, typ) = Missing <: typ ? :($name::$typ = missing) : :($name::$typ)
-        structdef.args[3].args = map(fielddef, res.names, res.types)  # fields
-        :((Base.@kwdef $structdef; FunnyORM.tablename(::Type{$genmodelname}) = Symbol($gentablename)))
-    end
 
-generate_string(db::DB, genmodelname::Symbol, gentablename::Symbol) =
-    let expr = Base.remove_linenums!(FunnyORM.generate(db, genmodelname, gentablename))
-        strip(replace(string(expr.args[1]) * "\n" * string(expr.args[2]), r"#=.*=#" => "", "\n    " => "\n"))
-    end
-
-# precompile(generate, (DB, Symbol, Symbol))
-# precompile(generate_string, (DB, Symbol, Symbol))
 end
