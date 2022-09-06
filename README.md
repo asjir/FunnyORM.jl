@@ -12,7 +12,7 @@ download("https://github.com/MechanicalRabbit/ohdsi-synpuf-demo/releases/downloa
 db = DB{SQLite.DB}("db.sqlite")
 
 ```
-First we need a mapping. It's easiest to generate it by specifying the db, object name, and table name.
+First we need the object-relational mapping. It's easiest to generate it by specifying the db, object name, and table name.
 ```julia
 write("person.jl", (FunnyORM.generate_string(db, :Person, :person)))
 include("person.jl")
@@ -20,7 +20,7 @@ Person
 ```
 After you run this, you VSCode should show you what Person is, and what fields it has, when you hover over it.
 
-Now we can query the db like this: 
+Now we can query the db: 
 ```julia
 using DataFrames
 db[Person[month_of_birth=[2, 4], person_source_value="%F%", year_of_birth=1900:1930]] |> DataFrame
@@ -28,11 +28,6 @@ db[Person[month_of_birth=[2, 4], person_source_value="%F%", year_of_birth=1900:1
 AbstractVector maps to IN, AbstractRange and Pair to BETWEEN and AbstractString to LIKE if it contains _ or $.
 Otherwise it's =.
 
-If you use JET then it will pick up that the field name is wrong here:
-
-```julia
-db[Person[month_of_birth=[2, 4]]][1].year_if_birth
-```
 Also a named tuple in arguments is treated as an or, so in this case the following are equivalent:
 ```julia
 Person[month_of_birth=[2, 4]]
@@ -64,3 +59,8 @@ db[Person[Visit[visit_end_date="" => "2008-04-13"]]]
 This will give you people who had visits that ended before 13th Apr 2008.
 
 For many-to-many relationship you need to have an object for e.g. `PersonVisit` in this case and do `Person[PersonVisit[Visit]]`.
+
+And if you use JET then it will pick up some errors, like field name being wrong here:
+```julia
+db[Person[month_of_birth=[2, 4]]][1].year_if_birth
+```
