@@ -42,7 +42,7 @@ macro allowmissing(structdef)
 end
 nullable(::Type{T}) where {T} = Union{T,Missing}
 
-generate(db::DB, genmodelname::Symbol, gentablename::Symbol) =
+generate(db::DB, genmodelname::Symbol, gentablename::Symbol) =  # maybe this can use PRIMARY KEY / FOREIGN KEY for auto pk etc.
     let res = db[From(gentablename)], gentablename = string(gentablename)
         structdef = :(struct $genmodelname <: AbstractModel end)
         fielddef(name, typ) = Missing <: typ ? :($name::$typ = missing) : :($name::$typ)
@@ -54,6 +54,8 @@ generate_string(db::DB, genmodelname::Symbol, gentablename::Symbol) =
     let expr = Base.remove_linenums!(FunnyORM.generate(db, genmodelname, gentablename))
         strip(replace(string(expr.args[1]) * "\n" * string(expr.args[2]), r"#=.*=#" => "", "\n    " => "\n"))
     end
+
+
 
 precompile(generate, (DB, Symbol, Symbol))
 precompile(generate_string, (DB, Symbol, Symbol))
