@@ -14,7 +14,7 @@ db = DB{SQLite.DB}("db.sqlite")
 ```
 First we need the object-relational mapping. It's easiest to generate it by specifying the db, object name, and table name.
 ```julia
-write("person.jl", (FunnyORM.generate_string(db, :Person, :person)))
+write("person.jl", FunnyORM.generate_string(db, :Person, :person))
 include("person.jl")
 Person
 ```
@@ -51,7 +51,7 @@ And be able to get any fields aggregations with sql etc.
 You can also query by relations, though `contraint ... foreign key...` is not supported yet - the column names simply need to match.
 
 ```julia
-write("visit.jl", (FunnyORM.generate_string(db, :Visit, :visit_occurrence)))
+write("visit.jl", FunnyORM.generate_string(db, :Visit, :visit_occurrence))
 include("visit.jl")
 
 db[Person[Visit[visit_end_date="" => "2008-04-13"]]]
