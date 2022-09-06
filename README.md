@@ -58,7 +58,7 @@ db[Person[Visit[visit_end_date="" => "2008-04-13"]]]
 ```
 This will give you people who had visits that ended before 13th Apr 2008.
 
-For many-to-many relationship you need to have an object for e.g. `PersonVisit` in this case and do `Person[PersonVisit[Visit]]`.
+For many-to-many relationship you need to have an object for e.g. `PersonVisit` in this case and do `Person[PersonVisit[Visit[...]]]`.
 
 And if you use JET then it will pick up some errors, like field name being wrong here:
 ```julia
