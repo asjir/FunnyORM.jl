@@ -1,6 +1,8 @@
 # ORMish package that you can use with FunSQL (WIP)
 
-<!-- <details open><summary>Julia Code</summary>xx</details> -->
+[![Build Status][ci-img]][ci-url]
+[![Code Coverage Status][codecov-img]][codecov-url]
+[![MIT License][license-img]][license-url]
 
 ## Quickstart
 
@@ -14,16 +16,21 @@ db = FunnyORM.DB{SQLite.DB}("db.sqlite")
 ```
 First we need the object-relational mapping. It's easiest to generate it by specifying the db, object name, and table name.
 ```julia
-write("person.jl", FunnyORM.generate_string(db, :Person, :person))
-include("person.jl")
+FunnyORM.generate_file(db, :Person, tablename=:person)
+include("models/person.jl")
 Person
 ```
-After you run this, you VSCode should show you what Person is, and what fields it has, when you hover over it.
+After you run this, you VSCode should show you what Person is, and what fields it has, when you hover over it. 
+
+
+<details><summary>About defaults</summary>
+If a field can be `Missing`, the generated class will contain default `missing` for it. For the rest no default is set, so you may wish to edit the generated file.</details>
+
 
 Now we can query the db: 
 ```julia
 using DataFrames
-db[Person[month_of_birth=[2, 4], person_source_value="%F%", year_of_birth=1900:1930]] |> DataFrame
+db[Person[month_of_birth=[2, 4], person_source_value="%F%", year_of_birth=1900:1930]]
 ```
 AbstractVector maps to IN, AbstractRange and Pair to BETWEEN and AbstractString to LIKE if it contains _ or $.
 Otherwise it's =.
@@ -38,10 +45,10 @@ Under the hood it's FROM .. WHERE ... queries.
 If you want more SQL you can add a second argument and it will work as if your data got piped into it.
 ```julia
 using FunSQL: Order, Get
-db[Person[month_of_birth=[2, 4]], Order(Get.year_of_birth)] |> DataFrame
+db[Person[month_of_birth=[2, 4]], Order(Get.year_of_birth)]
 ```
-In the examples above we create a vector of objects and convert to DataFrame for printing. (Tables interface WIP)
-To skip creation of objects you can do:
+In the examples above we create a vector of objects and convert to DataFrame for printing.
+To skip creation of objects you can replace `,` with `|>`:
 ```julia
 using FunSQL: Order, Get
 db[Person[month_of_birth=[2, 4]] |> Order(Get.year_of_birth)] |> DataFrame
@@ -51,8 +58,8 @@ And be able to get any fields aggregations with sql etc.
 You can also query by relations, though `contraint ... foreign key...` is not supported yet - the column names simply need to match.
 
 ```julia
-write("visit.jl", FunnyORM.generate_string(db, :Visit, :visit_occurrence))
-include("visit.jl")
+FunnyORM.generate_file(db, :Visit, tablename=:visit_occurrence)
+include("models/visit_occurrence.jl")
 
 db[Person[Visit[visit_end_date="" => "2008-04-13"]]]
 ```
@@ -65,7 +72,44 @@ And if you use JET then it will pick up some errors, like field name being wrong
 db[Person[month_of_birth=[2, 4]]][1].year_if_birth
 ```
 
+## Mutating:
+
+### Creating new objects:
+
+```julia
+# single insert - returns new Person
+Person(db)(gender_concept_id=8532, month_of_birth=11)
+# bulk insert - returns Vector{Person}
+Person(db)([(gender_concept_id=8532, month_of_birth=11), (gender_concept_id=1111,)])
+```
+### Updating objects
+
+Here you need to use a macro.
+
+```julia
+# grab the latest insert
+newlyinserted = db[Person[gender_concept_id=1111]] |> only
+@update db[newlyinserted] day_of_birth = 10 month_of_birth = 3
+newlyinserted.day_of_birth == 10  # true
+
+# Warning! It only updates the reference you call it with, i.e:
+v = [newlyinserted]
+@update db[newlyinserted] day_of_birth = 15
+newlyinserted.day_of_birth == 15, v[1].day_of_birth == 10  # both true
+```
+
+
+
+
 # still TODO:
 
 * db.sqlmap for relationships
 * db.sqlmap for not nulls
+* maybe? db.sqlmap for Person -> Person,person,Persons,persons
+
+[ci-img]: https://github.com/asjir/FunnyORM/workflows/CI/badge.svg
+[ci-url]: https://github.com/asjir/FunnyORM/actions?query=workflow%3ACI+branch%3Amain
+[codecov-img]: https://codecov.io/gh/asjir/FunnyORM/branch/main/graph/badge.svg
+[codecov-url]: https://codecov.io/gh/asjir/FunnyORM
+[license-img]: https://img.shields.io/badge/license-MIT-blue.svg
+[license-url]: https://raw.githubusercontent.com/asjir/FunnyORM/main/LICENSE.md
