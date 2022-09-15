@@ -9,6 +9,7 @@ mutable struct Saver{T<:AbstractModel}
     Model::Type{T}
     nextindex::Int64
 end
+Saver(db::DB, Model::Type, nextindex::Int32) = Saver(db, Model, convert(Int64, nextindex))
 
 _callsaver(saver::Saver, closure::Function, cnt::Int=1, returnvec=false) =
     let T = saver.Model
