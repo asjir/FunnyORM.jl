@@ -4,42 +4,73 @@ import FunSQL: FunSQL, Agg, Append, As, Asc, Bind, Define, Desc, Fun, From, Get,
     Group, Highlight, Iterate, Join, LeftJoin, Limit, Lit, Order,
     Partition, Select, Sort, Var, Where, With, WithExternal, render  # FunSQL doesnt export
 
-import DBInterface, SQLite, Inflector, Tables
+import DBInterface, Inflector, Tables
 import PrettyTables: pretty_table
-export DB
+import UUIDs: UUID
 
-
-"""wrapper around a connection and lookup from its catalog"""
+"""Wrapper around a connection and lookup from its catalog.
+See also [`AbstractModel`](@ref), [`TableQuery`](@ref)
+"""
 struct DB{T}
     connection::FunSQL.SQLConnection{T}
-    # modellookup::Dict{Vector{Symbol},Type{AbstractModel}}
+    sqlmap::Dict{Symbol,Tuple}
+    # modellookup::Dict{Vector{Symbol},Type{AbstractModel}}   # should NOT reference AM, tables only
 end
-include("model.jl")
-
+include("schema.jl")
 """DBInterface.connect is too low level for an ORM package"""
-DB{T}(fname::String) where {T} = DB{T}(DBInterface.connect(FunSQL.DB{T}, fname), Dict())
+DB{T}(fname::String) where {T} =
+    let conn = DBInterface.connect(FunSQL.DB{T}, fname)
+        DB{T}(conn, sqlmap(conn))
+    end
+
+include("model.jl")
+include("mutating.jl")
 
 """```jldoctest
-julia> db[query::FunSQL.SQLNode] = sqlresult
+julia> db[query::FunSQL.SQLNode]
+SQLite.Query(...)
 ```"""
 Base.getindex(db::DB, q::FunSQL.SQLNode) = DBInterface.execute(db.connection, q)
 
+"""Allows for special query syntax and converts to an SQL Node when used in a query.
+It also hold the type information to convert the query output back into your defined model.
+You construct it like this:
+```jldoctest
+julia> MyModel[(x=3, y=[4,6]), z=3:5, date=""=>"2022-02-22", RelatedModel[name="%aa_bb%"]]
+FunnyORM.TableQuery{MyModel}(...)
+```
+Pass it to DB:
+```jldoctest
+julia> db[MyModel[]]
+Vector{MyModel}...
+```
+"""
 struct TableQuery{T<:AbstractModel}
     type::Type{T}
     orclauses::Vector{NamedTuple}
     tqs::Vector{TableQuery}
     kwargs::Dict{Symbol,Any}
 end
-# Base.getindex(::Type{T}) where {T<:AbstractModel} = From(tablename(T)),   # HERE
+
 Base.getindex(::Type{T}, args...; kwargs...) where {T<:AbstractModel} =
-    let orclauses = collect(filter(x -> x isa NamedTuple, args)), tqs = collect(filter(x -> x isa TableQuery, args))
+    let orclauses = collect(filter(x -> x isa NamedTuple, args)),
+        tqs = collect(filter(x -> x isa TableQuery, args)),
+        pks = cat(filter(x -> x isa Union{Vector,Int,UUID}, args)..., dims=1),
+        kwargs = Dict{Symbol,Any}(kwargs)
+
+        if !isempty(pks)
+            pk(T) ∈ keys(kwargs) && @error "ambiguous primary key, you passed both:" pks kwargs[pk(T)]
+            kwargs[pk(T)] = cat(pks..., dims=1)
+        end
+        # TODO: below should check if something not passed any filter
         length(orclauses) + length(tqs) > length(args) && @warn "Invalid argument, ignoring."
         TableQuery{T}(T, orclauses, tqs, kwargs)
     end
 
 
 """```jldoctest
-julia> convert(FunSQL.AbstractSQLNode, Movie[type="wha"]) = query::FunSQL.SQLNode
+julia> convert(FunSQL.AbstractSQLNode, Movie[type="wha"]) 
+FunSQL.SQLNode(...)
 ```"""
 Base.convert(::Type{FunSQL.AbstractSQLNode}, tq::TableQuery{T}) where {T<:AbstractModel} =
     let kwargs = collect(tq.kwargs)
@@ -58,12 +89,14 @@ Base.convert(::Type{FunSQL.AbstractSQLNode}, tq::TableQuery{T}) where {T<:Abstra
                 cond(key, val) for (key, val) in pairs(orclause)
             )...))
         end
-
+        # if !isempty(tq.pks)
+        #     query = query |> Fun.in(f(pk(tq.type)), tq.pks...)
+        # end
         for desc::TableQuery in tq.tqs
-            _get_pk(n) = pk(T) in fieldnames(desc.type) ? getproperty(n, pk(T)) : getproperty(n, pk(desc.type))  # TODO: many to many 
+            _get_pk(n) = pk(T) in fieldnames(desc.type) ? getproperty(n, pk(T)) : getproperty(n, pk(desc.type))  # TODO: sqlmap 
             query = query |> Join(:other => desc, _get_pk(Get) .== _get_pk(Get.other))
         end
-        !isempty(tq.tqs) && query = query |> Group((Get(n) for n in fieldnames(T))...)
+        !isempty(tq.tqs) && (query = query |> Group((Get(n) for n in fieldnames(T))...))
         Base.convert(FunSQL.SQLNode, query)
     end
 
@@ -71,51 +104,11 @@ Base.convert(::Type{FunSQL.AbstractSQLNode}, tq::TableQuery{T}) where {T<:Abstra
 _unpack(ntuple::NamedTuple, ::Type{T}) where {T<:AbstractModel} = T(ntuple...)
 
 """```jldoctest
-julia> db[Movie[type="wha"], sql=Where(true)] = modelresult::Vector{Movie}
+julia> db[Movie[type="wha"], sql=Where(true)]
+Vector{Movie}...
 ```"""
 Base.getindex(db::DB, tq::TableQuery{T}, sql::FunSQL.SQLNode=Where(true)) where {T<:AbstractModel} =
     _unpack.(Tables.rowtable(db[tq|>sql]), T)::Vector{T}
 
-
-# generate(db::DB, ::Type{T}) where {T<:AbstractModel} =
-# # this will be for validation
-#     let table::FunSQL.SQLTable = db.connection.catalog[tablename(T)]
-#         3
-#     end
-
-# multi object code
-# import NamedTupleTools: select
-# import DataStructures: DefaultOrderedDict
-# _prefixize(prefix::Symbol, target::Symbol) = Symbol(string(prefix) * string(target))
-
-# _unpack(ntuple::NamedTuple, ::Type{T}, ::Type{U}) where {T,U<:AbstractModel} =
-#     let valselect(ntuple, prefix, type) = values(select(ntuple, _prefixize.(prefix, fieldnames(type))))  # this is very meh
-#         T(valselect(ntuple, :left_, T)...), U(valselect(ntuple, :right_, U)...)
-#     end
-
-# Base.getindex(db::DB, tq::TableQuery{T}, tq2::TableQuery{U}, sql::FunSQL.SQLNode=Where(true)) where {T,U<:AbstractModel} =
-#     let get_pk(n) = getproperty(n, pk(T))
-#         sel = Select([_prefixize(:left_, fname) => getproperty(Get, fname) for fname in fieldnames(T)]...,
-#             [_prefixize(:right_, fname) => getproperty(Get.other, fname) for fname in fieldnames(U)]...)
-#         # Tables.rowtable(db[tq|>Join(:other => tq2, get_pk(Get) .== get_pk(Get.other))|>sql|>sel])
-#         query = db[tq|>Join(:other => tq2, get_pk(Get) .== get_pk(Get.other))|>sql|>sel]
-#         tuples = _unpack.(Tables.rowtable(query), T, U)
-#         aggregate(tuples) =
-#             let
-#                 dict = DefaultOrderedDict{T,Vector{U}}(() -> Vector{U}())
-#                 for (left, right) in tuples
-#                     push!(dict[left], right)
-#                 end
-#                 return dict
-#             end
-#         aggregate(tuples)
-#     end
-
-# setmany2many!(db::DB, types=subtypes(AbstractModel)) =
-#     let pks = pk.(types), flags = zeros(Int, length(types)), fieldnamess = fieldnames.(types)
-#         for (i, currpk) in enumerate(pks)
-#             flags[i+1:end] += currpk .∈ fieldnamess[i+1:end]
-#         end
-#     end
-
+precompile(Base.getindex, (DB, FunSQL.SQLNode))
 end

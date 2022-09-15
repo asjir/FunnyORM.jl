@@ -9,7 +9,7 @@ Let's start with the example DB that FunSQL provides:
 ```julia 
 using FunnyORM, SQLite
 download("https://github.com/MechanicalRabbit/ohdsi-synpuf-demo/releases/download/20210412/synpuf-10p.sqlite", "db.sqlite")
-db = DB{SQLite.DB}("db.sqlite")
+db = FunnyORM.DB{SQLite.DB}("db.sqlite")
 
 ```
 First we need the object-relational mapping. It's easiest to generate it by specifying the db, object name, and table name.
@@ -64,3 +64,8 @@ And if you use JET then it will pick up some errors, like field name being wrong
 ```julia
 db[Person[month_of_birth=[2, 4]]][1].year_if_birth
 ```
+
+# still TODO:
+
+* db.sqlmap for relationships
+* db.sqlmap for not nulls

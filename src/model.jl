@@ -1,62 +1,70 @@
 import MacroTools: @capture, postwalk
-import DataFrames: DataFrame
 
-export AbstractModel, @allowmissing, nullable
+export AbstractModel, @allowmissing, nullable, pk
 
+"""AbstractModel is the base type for your models.
+You should not instantiate your model manually.
+You get it from a:
+* query: `db[MyModel[conditions...]][idx]`
+* insertion: `MyModel(db)(kwargs)`
+* updating: `newmodel = db[oldmodel](update_kwargs...)`
+This means any model corresponds to an actual row in your DB.
+Unless, of course, this row is changed by a separate process.
+"""
 abstract type AbstractModel end
 
-Base.show(io::IO, t::T) where {T<:AbstractModel} = print(io, t)
-Base.print(io::IO, t::T) where {T<:AbstractModel} =  # TODO: print a vector of AMs
-    let data = permutedims([string(getfield(t, name)) for name in fieldnames(T)])
-        header = (collect(string.(fieldnames(T))), collect(string.(fieldtypes(T))))
-        pretty_table(io, data; header)
-    end
-Base.print(io::IO, ts::Vector{T}) where {T<:AbstractModel} =  # TODO: print a vector of AMs
-    let data = permutedims(cat([[string(getfield(t, name)) for name in fieldnames(T)] for t in ts]..., dims=2))
-        header = (collect(string.(fieldnames(T))), collect(string.(fieldtypes(T))))
-        pretty_table(io, data; header)
-    end
+_show(io, x) = (show(io, typeof(x)); println(stdout); pretty_table(io, Tables.rowtable(x)))
+Base.show(io::IO, t::T) where {T<:AbstractModel} = _show(io, t)
+Base.show(io::IO, ::MIME"text/plain", t::T) where {T<:AbstractModel} = _show(io, t)
+Base.show(io::IO, ts::Vector{T}) where {T<:AbstractModel} = _show(io, ts)
+Base.show(io::IO, ::MIME"text/plain", ts::Vector{T}) where {T<:AbstractModel} = _show(io, ts)
 
 Base.NamedTuple(m::T) where {T<:AbstractModel} = NamedTuple([name => getfield(m, name) for name in fieldnames(typeof(m))])  # not sure if needed
-DataFrame(ts::Vector{T}) where {T<:AbstractModel} = DataFrame(NamedTuple.(ts))
-DataFrame(t::T) where {T<:AbstractModel} = DataFrame([NamedTuple(t)])
+Tables.rows(ts::Vector{T}) where {T<:AbstractModel} = NamedTuple.(ts)
+Tables.rows(t::T) where {T<:AbstractModel} = [NamedTuple(t)]
 
-"""default conversion of struct name to table name"""
-tablename(::Type{T}) where {T<:AbstractModel} = T |> string |> lowercase |> Inflector.to_plural |> Symbol
-"""default primary key"""
-pk(::Type{T}) where {T<:AbstractModel} = T |> fieldnames |> first
-"""get the primary key"""
 pk(m::T) where {T<:AbstractModel} = getfield(m, pk(T))
+### Generating
 
-
-"""Allows you to write
-```jldoctest
-julia> @kwdef @allowmissing struct S x::Int = missing end
-julia> fieldtype(S, :x)
-Union{Missing, Int64}
-```"""
-macro allowmissing(structdef)
-    postwalk(structdef) do expr
-        @capture(expr, fld_::typ_ = missing) ? :($fld::nullable($typ)) : expr
-    end
-end
-nullable(::Type{T}) where {T} = Union{T,Missing}
-
-generate(db::DB, genmodelname::Symbol, gentablename::Symbol) =  # maybe this can use PRIMARY KEY / FOREIGN KEY for auto pk etc.
-    let res = db[From(gentablename)], gentablename = string(gentablename)
+tablename = Symbol ∘ Inflector.to_plural ∘ lowercase ∘ string
+generate(db::DB, genmodelname::Symbol; tablename::Symbol=tablename(genmodelname)) =  # maybe this can use PRIMARY KEY / FOREIGN KEY for auto pk etc.
+    let
+        try
+            From(tablename)
+        catch e
+            e isa FunSQL.ReferenceError && @error "$tablename not found in the db.
+            Try specifying the `gentablename` keyword argument. 
+            If the table has just been created, you need to reset the connection with new FunnyORM.DB object."
+            rethrow(e)
+        end
+        res = db[From(tablename)]
+        # TODO: add to sqlmap NOT NULL information and prune missing
         structdef = :(struct $genmodelname <: AbstractModel end)
-        fielddef(name, typ) = Missing <: typ ? :($name::$typ = missing) : :($name::$typ)
+        fielddef(name, typ) = Missing <: typ ? :($name::$typ = missing) : :($name::$typ)  # NEVER allow for missing PK
+        # also need to handle UUIDs/conversions here at some point.
         structdef.args[3].args = map(fielddef, res.names, res.types)  # fields
-        :((Base.@kwdef $structdef; FunnyORM.tablename(::Type{$genmodelname}) = Symbol($gentablename)))
+        can_get_pk = (tablename ∈ keys(db.sqlmap)) && !isnothing(db.sqlmap[tablename][1])
+        can_get_pk || @warn "couldn't infer pk for table $genmodelname, defaulting to $(first(res.names))"
+        :((
+            Base.@kwdef $structdef;
+            FunnyORM.tablename(::Type{$genmodelname}) = Symbol($(string(tablename)));
+            FunnyORM.pk(::Type{$genmodelname}) =
+                Symbol($(string(can_get_pk ? db.sqlmap[tablename][1] : first(res.names))))
+        ))
     end
 
-generate_string(db::DB, genmodelname::Symbol, gentablename::Symbol) =
-    let expr = Base.remove_linenums!(FunnyORM.generate(db, genmodelname, gentablename))
-        strip(replace(string(expr.args[1]) * "\n" * string(expr.args[2]), r"#=.*=#" => "", "\n    " => "\n"))
+generate_string(db::DB, genmodelname::Symbol; tablename::Symbol=tablename(genmodelname)) =
+    let expr = Base.remove_linenums!(FunnyORM.generate(db, genmodelname; tablename))
+        bare_string = join(map(string, expr.args), "\n")
+        strip(replace(bare_string, r"#=.*=#" => "", "\n    " => "\n"))
     end
 
 
+generate_file(db::DB, genmodelname::Symbol; tablename::Symbol=tablename(genmodelname), path="models/$tablename.jl") =
+    let _ = mkpath(dirname(path))
+        write(path, generate_string(db, genmodelname; tablename))
+        path
+    end
 
 precompile(generate, (DB, Symbol, Symbol))
 precompile(generate_string, (DB, Symbol, Symbol))
-
