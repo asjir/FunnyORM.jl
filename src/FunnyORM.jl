@@ -55,7 +55,7 @@ end
 Base.getindex(::Type{T}, args...; kwargs...) where {T<:AbstractModel} =
     let orclauses = collect(filter(x -> x isa NamedTuple, args)),
         tqs = collect(filter(x -> x isa TableQuery, args)),
-        pks = cat(filter(x -> x isa Union{Vector,Int,UUID}, args)..., dims=1),
+        pks = cat(filter(x -> x isa Union{Vector,Integer,UUID}, args)..., dims=1),
         kwargs = Dict{Symbol,Any}(kwargs)
 
         if !isempty(pks)

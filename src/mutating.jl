@@ -9,19 +9,6 @@ mutable struct Saver{T<:AbstractModel}
     Model::Type{T}
     nextindex::Int64
 end
-Saver(db::DB, Model::Type, nextindex::Int32) = Saver(db, Model, convert(Int64, nextindex))
-
-_callsaver(saver::Saver, closure::Function, cnt::Int=1, returnvec=false) =
-    let T = saver.Model
-        vals = map(fldn -> closure(fldn, new_pk), fieldnames(T))
-        phs = join(("?" for _ in vals), ", ")
-        execute = cnt == 1 ? DBInterface.execute : DBInterface.executemany
-        execute(saver.db.connection, """INSERT INTO $(tablename(T)) VALUES ($phs)""", vals)
-        saver.nextindex += (saver.nextindex > 0 ? cnt : 0)
-        pks = [closure(pk(T), new_pk);]
-        inserted = saver.db[saver.Model[pks]]
-        returnvec ? inserted : only(inserted)
-    end
 
 """Basically you can't *really* save without constructing AbstractModels because someone might have overriden defaults.
 E.g. you might want your Julia code to give default timestamps, but your db doesnt do it so you put it in your Model definition.
@@ -39,10 +26,10 @@ _save(saver::Saver{T}, model_s::Union{Vector{T},T}) where {T<:AbstractModel} =
 
 new_pk(saver::Saver) =
     saver.nextindex > 0 ? saver.nextindex : rand(fieldtype(saver.Model, pk(saver.Model)))
-new_pk(saver::Saver, n::Int) =
+new_pk(saver::Saver, n::Int64) =
     saver.nextindex > 0 ? [saver.nextindex:(saver.nextindex+n-1);] : rand(fieldtype(saver.Model, pk(saver.Model)), n)
 
-withpk(Model::Type{T}, 🔑, kwargs::NamedTuple) where {T<:AbstractModel} =
+withpk(Model::Type{T}, 🔑::Int64, kwargs::NamedTuple) where {T<:AbstractModel} =
     Model(; merge(kwargs, (pk(Model) => 🔑,))...)
 
 (saver::Saver)(; kwargs...) = _save(saver, withpk(saver.Model, new_pk(saver), kwargs.data))
