@@ -1,4 +1,4 @@
-name = "FunnyORM.jl"
+name = "FunnyORM"
 uuid = "6f72f9d7-811b-4da6-baae-56a3a3823ad6"
 authors = ["asjir <pa.paradysz@gmail.com>"]
 version = "0.1.0"
