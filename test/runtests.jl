@@ -39,5 +39,6 @@ using FunSQL: From
         @test Person(db)([(LastName="Man",), (LastName="Woman",)])[1].LastName == "Man"
         guy = db[Person[LastName="Man"]] |> only
         @test (@update db[guy] FirstName = "My").FirstName == "My"
+        @test length(db[Person[LastName=["Man", "Woman"]]]) == 2
     end
 end
