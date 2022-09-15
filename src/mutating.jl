@@ -7,7 +7,7 @@ You'd likely want to use either `MyModel(db)(kwargs)` or `MyModel(db)([namedtupl
 mutable struct Saver{T<:AbstractModel}
     db::DB
     Model::Type{T}
-    nextindex::Int
+    nextindex::Int64
 end
 
 _callsaver(saver::Saver, closure::Function, cnt::Int=1, returnvec=false) =
