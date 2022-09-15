@@ -9,6 +9,7 @@ mutable struct Saver{T<:AbstractModel}
     Model::Type{T}
     nextindex::Int64
 end
+Saver(db::DB, Model::Type, nextindex::Int32) = Saver(db, Model, Int64(nextindex))
 
 """Basically you can't *really* save without constructing AbstractModels because someone might have overriden defaults.
 E.g. you might want your Julia code to give default timestamps, but your db doesnt do it so you put it in your Model definition.
