@@ -36,7 +36,7 @@ withpk(Model::Type{T}, 🔑::Int64, kwargs::NamedTuple) where {T<:AbstractModel}
 (saver::Saver)(; kwargs...) = _save(saver, withpk(saver.Model, new_pk(saver), kwargs.data))
 
 (saver::Saver)(kwargss::Vector{T}) where {T<:NamedTuple} =
-    let models = withpk.(saver.Model, new_pk(saver, length(kwargss)), kwargss)
+    let models = withpk.(saver.Model, new_pk(saver, Int64(length(kwargss))), kwargss)
         _save(saver, models)
     end
 
