@@ -23,7 +23,11 @@ Base.NamedTuple(m::T) where {T<:AbstractModel} = NamedTuple([name => getfield(m,
 Tables.rows(ts::Vector{T}) where {T<:AbstractModel} = NamedTuple.(ts)
 Tables.rows(t::T) where {T<:AbstractModel} = [NamedTuple(t)]
 
-pk(m::T) where {T<:AbstractModel} = getfield(m, pk(T))
+pk(m::T) where {T<:AbstractModel} =
+    let 🐴(x::Int32) = convert(Int64, x), 🐴(x) = x
+        🐴(getfield(m, pk(T)))
+    end
+
 ### Generating
 
 tablename = Symbol ∘ Inflector.to_plural ∘ lowercase ∘ string
