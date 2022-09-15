@@ -14,12 +14,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-        - name: Julia LTS / Linux 64bit
-          version: '1.6'
+        - name: Julia 1.7 / Linux 64bit
+          version: '1.7'
           os: ubuntu-latest
           arch: x64
-        - name: Julia LTS / Linux 32bit
-          version: '1.6'
+        - name: Julia 1.7 / Linux 32bit
+          version: '1.7'
           os: ubuntu-latest
           arch: x86
         - name: Julia Stable / Linux 64bit
@@ -72,13 +72,13 @@ jobs:
     - uses: codecov/codecov-action@v2
       with:
         file: lcov.info
-  docs:
-    name: Documentation
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - uses: julia-actions/setup-julia@v1
-    - uses: julia-actions/julia-buildpkg@v1
-    - uses: julia-actions/julia-docdeploy@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#  docs:
+#    name: Documentation
+#    runs-on: ubuntu-latest
+#    steps:
+#    - uses: actions/checkout@v2
+#    - uses: julia-actions/setup-julia@v1
+#    - uses: julia-actions/julia-buildpkg@v1
+#    - uses: julia-actions/julia-docdeploy@v1
+#      env:
+#        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
