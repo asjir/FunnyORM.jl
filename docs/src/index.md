@@ -9,8 +9,6 @@
 AbstractModel
 FunnyORM.DB
 ```
-
-
 ## Querying
 
 ```@docs
