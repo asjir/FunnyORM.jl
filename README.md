@@ -1,4 +1,4 @@
-# ORMish package that you can use with FunSQL (WIP)
+# ORM package that you can use with FunSQL
 
 [![Dev Documentation][docs-dev-img]][docs-dev-url]
 [![Build Status][ci-img]][ci-url]
