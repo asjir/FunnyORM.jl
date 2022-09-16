@@ -5,9 +5,27 @@
 [![Code Coverage Status][codecov-img]][codecov-url]
 [![MIT License][license-img]][license-url]
 
-## Quickstart
+## Motivating example
 
-Let's start with the example DB that FunSQL provides: 
+FunSQL.jl allows you to build better queries than, say SQLAlchemy, but it doesn't, and shouldn't, have any Object-Relational Mapping.
+This package intends to provide one, so that you're able to write:
+```julia 
+julia> let f(x) = x |> Join(:new => x |> Group(Get.gender_concept_id) |> Select(Agg.max(Get.year_of_birth), Get.gender_concept_id), Fun.and(Get.gender_concept_id .== Get.new.gender_concept_id, Get.year_of_birth .== Get.new.max)) 
+       db[Person, f]  
+       end
+```
+Which for each gender will pick the youngest people if looking at year alone, and provide `Person` structs for each.
+
+These structs generated to be included in your code, so `JET.jl` can do type-checking and `VSCode` can show the definition with fields when you hover over them.
+
+## Status
+
+* Only supports Integer ids.
+* Only supports SQLite.
+
+## Walkthroough.
+
+We start with the example DB that FunSQL provides: 
 
 ```julia 
 using FunnyORM, SQLite
@@ -99,15 +117,12 @@ v = [newlyinserted]
 newlyinserted.day_of_birth == 15, v[1].day_of_birth == 10  # both true
 ```
 
-
-
-
 # still TODO:
 
 * db.sqlmap for relationships
-* db.sqlmap for not nulls
 * maybe? db.sqlmap for Person -> Person,person,Persons,persons, i.e. multiple gentablenames
 * UUIDs, e.g. with PSQL
+* get_sqls for dbs other than sqlite
   
 [docs-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
 [docs-dev-url]: https://mechanicalrabbit.github.io/FunSQL.jl/dev/

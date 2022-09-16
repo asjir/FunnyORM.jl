@@ -47,7 +47,6 @@ generate(db::DB, genmodelname::Symbol; tablename::Symbol=tablename(genmodelname)
         allowsmissing(name) = mapped ? string(name) ∉ db.sqlmap[tablename][3] : true
         can_get_pk || @warn "couldn't infer pk for table $genmodelname, defaulting to $(first(res.names))"
         structdef = :(struct $genmodelname <: AbstractModel end)
-        fielddef(name, typ) = (Missing <: typ) ? :($name::$typ = missing) : :($name::$typ)
         filtermissing(typ) =
             :(Union{$(filter(!=(Missing), Base.uniontypes(typ))...)})
         fielddef(name, typ) =
@@ -68,7 +67,9 @@ generate_string(db::DB, genmodelname::Symbol; tablename::Symbol=tablename(genmod
         strip(replace(bare_string, r"#=.*=#" => "", "\n    " => "\n"))
     end
 
-
+"""
+Using the databsase schema
+"""
 generate_file(db::DB, genmodelname::Symbol; tablename::Symbol=tablename(genmodelname), path="models/$tablename.jl") =
     let _ = mkpath(dirname(path))
         write(path, generate_string(db, genmodelname; tablename))

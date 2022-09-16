@@ -78,7 +78,8 @@ end
 """
 `db[oldmodel](update_kwargs...)` returns an updated model.\n
 `db[model]()` will not run the update query, so `db[model]` is a closure to return the up-to-date model when called.
-# Examples```jldoctest
+# Examples
+```jldoctest
 julia> firstperson = first(db[Person[]]); firstperson.year_of_birth
 1940
 julia> updated = db[firstperson](year_of_birth=1941); firstperson.year_of_birth, updated.year_of_birth

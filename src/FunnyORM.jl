@@ -26,7 +26,7 @@ include("model.jl")
 include("mutating.jl")
 
 """```jldoctest
-julia> db[query::FunSQL.SQLNode]
+julia> db[Person[year_of_birth=1941] |> Where(true)]
 SQLite.Query(...)
 ```"""
 Base.getindex(db::DB, q::FunSQL.SQLNode) = DBInterface.execute(db.connection, q)
@@ -103,11 +103,21 @@ Base.convert(::Type{FunSQL.AbstractSQLNode}, tq::TableQuery{T}) where {T<:Abstra
 _unpack(ntuple::NamedTuple, ::Type{T}) where {T<:AbstractModel} = T(ntuple...)
 
 """```jldoctest
-julia> db[Movie[type="wha"], sql=Where(true)]
-Vector{Movie}...
+Query for specifed Model and pass that query into the second argument. (Which defaults to `Where(true)`)
+# Examples
+julia> db[Person[year_of_birth=1941], sql=Where(true)]
+Vector{Person}...
+julia> using FunSQL: Group, Fun, Select, Agg, Join
+julia> let f(x) = (x |> Where(Get.year_of_birth .== (x |> Group() |> Select(Agg.max(Get.year_of_birth)))))
+       db[Person[], f] end  # pick the youngest people if looking at year alone
+Vector{Person}...
+julia> let f(x) = x |> Join(:new => x |> Group(Get.gender_concept_id) |> Select(Agg.max(Get.year_of_birth), Get.gender_concept_id), Fun.and(Get.gender_concept_id .== Get.new.gender_concept_id, Get.year_of_birth .== Get.new.max)) 
+       db[Person, f]  # for each gender pick the youngest people if looking at year alone
+       end
+Vector{Person}...
 ```"""
-Base.getindex(db::DB, tq::TableQuery{T}, sql::FunSQL.SQLNode=Where(true)) where {T<:AbstractModel} =
-    _unpack.(Tables.rowtable(db[tq|>sql]), T)::Vector{T}
+Base.getindex(db::DB, tq::TableQuery{T}, sql::Union{FunSQL.SQLNode,Function}=Where(true)) where {T<:AbstractModel} =
+    _unpack.(Tables.rowtable(db[tq|>sql]), T)::Vector{T}  # this might need to select the correct columns in case `sql` adds some...
 
 precompile(Base.getindex, (DB, FunSQL.SQLNode))
 end
