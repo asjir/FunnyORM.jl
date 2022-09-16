@@ -44,5 +44,9 @@ using FunSQL: From
         @test (@update db[guy] FirstName = "My").FirstName == "My"
         @test guyer().FirstName == "My"
         @test length(db[Person[LastName=["Man", "Woman"]]]) == 2
+        include(FunnyORM.generate_file(db, :Home, tablename=:home, path="$dir/home.jl"))
+        @test (Home(db)(OwnerId=1)).OwnerId == 1
+        @test db[Person[Home[1]]][1].LastName == "Bob"
+        @test_throws UndefKeywordError Home(db)()
     end
 end

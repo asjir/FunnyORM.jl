@@ -41,12 +41,17 @@ generate(db::DB, genmodelname::Symbol; tablename::Symbol=tablename(genmodelname)
             rethrow(e)
         end
         res = db[From(tablename)]
-        can_get_pk = (tablename ∈ keys(db.sqlmap)) && !isnothing(db.sqlmap[tablename][1])
-        (tablename ∈ keys(db.sqlmap)) ? allowsmissing(name) = name ∉ db.sqlmap[tablename][3] : allowsmissing(name) = true
+        mapped = tablename ∈ keys(db.sqlmap)
         # TODO: also need to generate references at this point
+        can_get_pk = mapped && !isnothing(db.sqlmap[tablename][1])
+        allowsmissing(name) = mapped ? string(name) ∉ db.sqlmap[tablename][3] : true
         can_get_pk || @warn "couldn't infer pk for table $genmodelname, defaulting to $(first(res.names))"
         structdef = :(struct $genmodelname <: AbstractModel end)
         fielddef(name, typ) = (Missing <: typ) ? :($name::$typ = missing) : :($name::$typ)
+        filtermissing(typ) =
+            :(Union{$(filter(!=(Missing), Base.uniontypes(typ))...)})
+        fielddef(name, typ) =
+            allowsmissing(name) ? :($name::$(Union{typ,Missing}) = missing) : :($name::$(filtermissing(typ)))
         # also need to handle UUIDs/conversions here at some point.
         structdef.args[3].args = map(fielddef, res.names, res.types)  # fields
         :((
