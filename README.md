@@ -108,6 +108,8 @@ newlyinserted.day_of_birth == 15, v[1].day_of_birth == 10  # both true
 * maybe? db.sqlmap for Person -> Person,person,Persons,persons, i.e. multiple gentablenames
 * UUIDs, e.g. with PSQL
 
+[docs-rel-img]: https://img.shields.io/badge/docs-stable-green.svg
+[docs-rel-url]: https://asjir.github.io/FunnyORM.jl/stable/
 [ci-img]: https://github.com/asjir/FunnyORM/workflows/CI/badge.svg
 [ci-url]: https://github.com/asjir/FunnyORM/actions?query=workflow%3ACI+branch%3Amain
 [codecov-img]: https://codecov.io/gh/asjir/FunnyORM/branch/main/graph/badge.svg
