@@ -13,8 +13,7 @@ See also [`AbstractModel`](@ref), [`TableQuery`](@ref)
 """
 struct DB{T}
     connection::FunSQL.SQLConnection{T}
-    sqlmap::Dict{Symbol,Tuple}
-    # modellookup::Dict{Vector{Symbol},Type{AbstractModel}}   # should NOT reference AM, tables only
+    sqlmap::Dict{Symbol,Tuple}  # TODO: Tuple -> struct
 end
 include("schema.jl")
 """DBInterface.connect is too low level for an ORM package"""

@@ -8,7 +8,10 @@ process_sql(s::String) =
             end
         fkeys(s) = Dict(map(x -> x.captures[2] => (x.captures[4], x.captures[6]),
             eachmatch(r"(FOREIGN\s+KEY\s*\(\s*\[?) (\w+) (\]?\s*\)\s*REFERENCES\s+\"?) (\w+) (\"?\s*\(\s*\[?) (\w+) (\]?\s*\)\s*) (\s|$|,)"x, s)))
-        Symbol(tname(s)) => (pkey(s), fkeys(s))
+        notnulls(s) = map(x -> x.captures[2],
+            eachmatch(r" (^\s*) (\w+) (.+NOT\s+NULL.*$)"xm, s))
+
+        Symbol(tname(s)) => (pkey(s), fkeys(s), notnulls(s))
     end
 
 getpk(tname::Symbol, sqlmap::Dict{Symbol,Tuple}) = sqlmap[tname][1]

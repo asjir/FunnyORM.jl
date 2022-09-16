@@ -86,3 +86,6 @@ julia> updated = db[firstperson](year_of_birth=1941); firstperson.year_of_birth,
 (1940, 1941)
 """
 Base.getindex(db::DB, m::AbstractModel) = (; kwargs...) -> _update(db, m, NamedTuple(kwargs))
+
+
+precompile(Base.getindex, (DB, AbstractModel))

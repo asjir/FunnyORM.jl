@@ -28,7 +28,7 @@ using FunSQL: From
 
     @testset "generation" begin
         db = FunnyORM.DB{SQLite.DB}("$dir/tempdb.db")
-        @test :person in keys(db.sqlmap)
+        @test :person in keys(FunnyORM.DB{SQLite.DB}("$dir/tempdb.db").sqlmap)
         @test DBInterface.execute(db.connection, "SELECT * FROM person") |> rowtable |> isempty
         @test begin
             include(FunnyORM.generate_file(db, :Person, tablename=:person, path="$dir/person.jl"))
@@ -37,6 +37,7 @@ using FunSQL: From
         @test pk(Person) == :Id
         @test Person(db)(LastName="Bob").LastName == "Bob"
         @test Person(db)([(LastName="Man",), (LastName="Woman",)])[1].LastName == "Man"
+        @test length(db[Person[LastName="Man"]]) == 1
         guy = db[Person[LastName="Man"]] |> only
         guyer = db[guy]
         @test guyer().FirstName === missing

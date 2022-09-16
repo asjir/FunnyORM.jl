@@ -18,13 +18,13 @@ Base.show(io::IO, ::MIME"text/plain", t::T) where {T<:AbstractModel} = _show(io,
 Base.show(io::IO, ts::Vector{T}) where {T<:AbstractModel} = _show(io, ts)
 Base.show(io::IO, ::MIME"text/plain", ts::Vector{T}) where {T<:AbstractModel} = _show(io, ts)
 
-Base.NamedTuple(m::T) where {T<:AbstractModel} = NamedTuple([name => getfield(m, name) for name in fieldnames(typeof(m))])  # not sure if needed
+Base.NamedTuple(m::AbstractModel) = NamedTuple([name => getfield(m, name) for name in fieldnames(typeof(m))])  # not sure if needed
 Tables.rows(ts::Vector{T}) where {T<:AbstractModel} = NamedTuple.(ts)
-Tables.rows(t::T) where {T<:AbstractModel} = [NamedTuple(t)]
+Tables.rows(t::AbstractModel) = [NamedTuple(t)]
 
-pk(m::T) where {T<:AbstractModel} =
+pk(m::AbstractModel) =
     let 🐴(x::Int32) = convert(Int64, x), 🐴(x) = x
-        🐴(getfield(m, pk(T)))
+        🐴(getfield(m, pk(typeof(m))))
     end
 
 ### Generating
@@ -41,13 +41,14 @@ generate(db::DB, genmodelname::Symbol; tablename::Symbol=tablename(genmodelname)
             rethrow(e)
         end
         res = db[From(tablename)]
-        # TODO: add to sqlmap NOT NULL information and prune missing
+        can_get_pk = (tablename ∈ keys(db.sqlmap)) && !isnothing(db.sqlmap[tablename][1])
+        (tablename ∈ keys(db.sqlmap)) ? allowsmissing(name) = name ∉ db.sqlmap[tablename][3] : allowsmissing(name) = true
+        # TODO: also need to generate references at this point
+        can_get_pk || @warn "couldn't infer pk for table $genmodelname, defaulting to $(first(res.names))"
         structdef = :(struct $genmodelname <: AbstractModel end)
-        fielddef(name, typ) = Missing <: typ ? :($name::$typ = missing) : :($name::$typ)  # NEVER allow for missing PK
+        fielddef(name, typ) = (Missing <: typ) ? :($name::$typ = missing) : :($name::$typ)
         # also need to handle UUIDs/conversions here at some point.
         structdef.args[3].args = map(fielddef, res.names, res.types)  # fields
-        can_get_pk = (tablename ∈ keys(db.sqlmap)) && !isnothing(db.sqlmap[tablename][1])
-        can_get_pk || @warn "couldn't infer pk for table $genmodelname, defaulting to $(first(res.names))"
         :((
             Base.@kwdef $structdef;
             FunnyORM.tablename(::Type{$genmodelname}) = Symbol($(string(tablename)));
