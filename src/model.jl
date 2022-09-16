@@ -4,12 +4,11 @@ export AbstractModel, @allowmissing, nullable, pk
 
 """AbstractModel is the base type for your models.
 You should not instantiate your model manually.
-You get it from a:
+
+You get it with a:
 * query: `db[MyModel[conditions...]][idx]`
 * insertion: `MyModel(db)(kwargs)`
-* updating: `newmodel = db[oldmodel](update_kwargs...)`
-This means any model corresponds to an actual row in your DB.
-Unless, of course, this row is changed by a separate process.
+* updating: `newmodel = db[oldmodel](update_kwargs...)` or `@update db[model] key1=val1 key2=val2 ...`
 """
 abstract type AbstractModel end
 

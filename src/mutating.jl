@@ -33,7 +33,7 @@ new_pk(saver::Saver, n::Int64) =
 withpk(Model::Type{T}, 🔑::Int64, kwargs::NamedTuple) where {T<:AbstractModel} =
     Model(; merge(kwargs, (pk(Model) => 🔑,))...)
 
-(saver::Saver)(; kwargs...) = _save(saver, withpk(saver.Model, new_pk(saver), kwargs.data))
+(saver::Saver)(; kwargs...) = _save(saver, withpk(saver.Model, new_pk(saver), NamedTuple(kwargs)))
 
 (saver::Saver)(kwargss::Vector{T}) where {T<:NamedTuple} =
     let models = withpk.(saver.Model, new_pk(saver, Int64(length(kwargss))), kwargss)
@@ -55,32 +55,18 @@ export @update
 _update(db::DB, m::T, kwargs::NamedTuple) where {T<:AbstractModel} =
     let phs = join(("$key=?" for key in keys(kwargs)), ", ")
         # check that all kwargs are valid? 
-        DBInterface.execute(db.connection, """UPDATE $(tablename(T)) SET $phs WHERE $(pk(T))=$(pk(m));""", values(kwargs))
+        !isempty(kwargs) && DBInterface.execute(db.connection, """UPDATE $(tablename(T)) SET $phs WHERE $(pk(T))=$(pk(m));""", values(kwargs))
         only(db[T[pk(m)]])
     end
 
 """
-Usage db[itemtoupdate] key1=val1 key2=val2 ..
+Usage `@update db[itemtoupdate] key1=val1 key2=val2 ..`
 # Examples
 ```jldoctest
-
-julia> @update db[acdc] Title="yoo"
-Album
-┌─────────┬────────┬──────────┐
-│ AlbumId │  Title │ ArtistId │
-│   Int64 │ String │    Int64 │
-├─────────┼────────┼──────────┤
-│       1 │    yoo │        1 │
-└─────────┴────────┴──────────┘
-julia> acdc
-Album
-┌─────────┬────────┬──────────┐
-│ AlbumId │  Title │ ArtistId │
-│   Int64 │ String │    Int64 │
-├─────────┼────────┼──────────┤
-│       1 │    yoo │        1 │
-└─────────┴────────┴──────────┘
-
+julia> firstperson = first(db[Person[]]); firstperson.year_of_birth
+1940
+julia> @update db[firstperson] year_of_birth=1941; firstperson.year_of_birth
+1941
 ```"""
 macro update(dbm, kwargs...)
     @assert all(map(kw -> kw.head == :(=), kwargs))
@@ -88,3 +74,15 @@ macro update(dbm, kwargs...)
     expr = @capture(dbm, db_[m_]) ? :($m = FunnyORM._update($db, $m, $kwargs)) : error("Updating syntax is `@update db[m] key1=value key1`")
     esc(expr)
 end
+
+"""
+`db[oldmodel](update_kwargs...)` returns an updated model.\n
+`db[model]()` will not run the update query, so `db[model]` is a closure to return the up-to-date model when called.
+# Examples
+```jldoctest
+julia> firstperson = first(db[Person[]]); firstperson.year_of_birth
+1940
+julia> updated = db[firstperson](year_of_birth=1941); firstperson.year_of_birth, updated.year_of_birth
+(1940, 1941)
+"""
+Base.getindex(db::DB, m::AbstractModel) = (; kwargs...) -> _update(db, m, NamedTuple(kwargs))
