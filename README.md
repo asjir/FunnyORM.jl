@@ -1,6 +1,6 @@
 # ORMish package that you can use with FunSQL (WIP)
 
-[![Stable Documentation][docs-rel-img]][docs-rel-url]
+[![Dev Documentation][docs-dev-img]][docs-dev-url]
 [![Build Status][ci-img]][ci-url]
 [![Code Coverage Status][codecov-img]][codecov-url]
 [![MIT License][license-img]][license-url]
@@ -108,7 +108,9 @@ newlyinserted.day_of_birth == 15, v[1].day_of_birth == 10  # both true
 * db.sqlmap for not nulls
 * maybe? db.sqlmap for Person -> Person,person,Persons,persons, i.e. multiple gentablenames
 * UUIDs, e.g. with PSQL
-
+  
+[docs-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
+[docs-dev-url]: https://mechanicalrabbit.github.io/FunSQL.jl/dev/
 [docs-rel-img]: https://img.shields.io/badge/docs-stable-green.svg
 [docs-rel-url]: https://asjir.github.io/FunnyORM.jl/stable/
 [ci-img]: https://github.com/asjir/FunnyORM/workflows/CI/badge.svg
