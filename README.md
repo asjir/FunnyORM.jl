@@ -14,7 +14,7 @@ julia> let f(x) = x |> Join(:new => x |> Group(Get.gender_concept_id) |> Select(
        db[Person, f]  
        end
 ```
-Which for each gender will pick the youngest people if looking at year alone, and provide `Person` structs for each.
+Which for each gender will pick the youngest people by yaer, and return `Person` structs for each.
 
 These structs generated to be included in your code, so `JET.jl` can do type-checking and `VSCode` can show the definition with fields when you hover over them.
 
@@ -126,7 +126,7 @@ newlyinserted.day_of_birth == 15, v[1].day_of_birth == 10  # both true
 * dates
   
 [docs-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
-[docs-dev-url]: https://mechanicalrabbit.github.io/FunSQL.jl/dev/
+[docs-dev-url]: https://asjir.github.io/FunnyORM.jl/dev/
 [docs-rel-img]: https://img.shields.io/badge/docs-stable-green.svg
 [docs-rel-url]: https://asjir.github.io/FunnyORM.jl/stable/
 [ci-img]: https://github.com/asjir/FunnyORM/workflows/CI/badge.svg
