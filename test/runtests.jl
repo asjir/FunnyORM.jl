@@ -40,7 +40,7 @@ using FunSQL: From, ReferenceError
         @test Person(db)([(LastName="Man",), (LastName="Woman",)])[1].LastName == "Man"
         @test length(db[Person[LastName="Man"]]) == 1
         guy = db[Person[LastName="Man"]] |> only
-        @test rowtable(guy)[1].LastName = "Man"
+        @test rowtable(guy)[1].LastName == "Man"
         guyer = db[guy]
         @test guyer().FirstName === missing
         @test (@update db[guy] FirstName = "My").FirstName == "My"
