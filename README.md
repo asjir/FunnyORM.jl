@@ -123,6 +123,7 @@ newlyinserted.day_of_birth == 15, v[1].day_of_birth == 10  # both true
 * maybe? db.sqlmap for Person -> Person,person,Persons,persons, i.e. multiple gentablenames
 * UUIDs, e.g. with PSQL
 * get_sqls for dbs other than sqlite
+* dates
   
 [docs-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
 [docs-dev-url]: https://mechanicalrabbit.github.io/FunSQL.jl/dev/
