@@ -1,7 +1,7 @@
 using Test, SQLite, FunnyORM, DBInterface
 import Tables: rowtable
 
-using FunSQL: From
+using FunSQL: From, ReferenceError
 
 @testset "db operations" begin
     dir = mkdir(tempname())
@@ -27,18 +27,20 @@ using FunSQL: From
     #     """INSERT INTO person VALUES (1, "whaat", 3, "haha");""")
 
     @testset "generation" begin
+        @test_throws ReferenceError FunnyORM.generate_file(db, :Person, tablename=:person, path="$dir/person.jl")
         db = FunnyORM.DB{SQLite.DB}("$dir/tempdb.db")
         @test :person in keys(FunnyORM.DB{SQLite.DB}("$dir/tempdb.db").sqlmap)
-        @test DBInterface.execute(db.connection, "SELECT * FROM person") |> rowtable |> isempty
         @test begin
             include(FunnyORM.generate_file(db, :Person, tablename=:person, path="$dir/person.jl"))
             true
         end
         @test pk(Person) == :Id
         @test Person(db)(LastName="Bob").LastName == "Bob"
+        @test rowtable(db[Person[LastName="Bob"]])[1].LastName == "Bob"
         @test Person(db)([(LastName="Man",), (LastName="Woman",)])[1].LastName == "Man"
         @test length(db[Person[LastName="Man"]]) == 1
         guy = db[Person[LastName="Man"]] |> only
+        @test rowtable(guy)[1].LastName = "Man"
         guyer = db[guy]
         @test guyer().FirstName === missing
         @test (@update db[guy] FirstName = "My").FirstName == "My"
