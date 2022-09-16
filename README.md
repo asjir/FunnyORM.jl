@@ -106,7 +106,6 @@ newlyinserted.day_of_birth == 15, v[1].day_of_birth == 10  # both true
 * db.sqlmap for relationships
 * db.sqlmap for not nulls
 * maybe? db.sqlmap for Person -> Person,person,Persons,persons
-* easy dynamic references / closures for queries?
 
 [ci-img]: https://github.com/asjir/FunnyORM/workflows/CI/badge.svg
 [ci-url]: https://github.com/asjir/FunnyORM/actions?query=workflow%3ACI+branch%3Amain
