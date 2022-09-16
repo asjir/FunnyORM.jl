@@ -1,5 +1,6 @@
 # ORMish package that you can use with FunSQL (WIP)
 
+[![Stable Documentation][docs-rel-img]][docs-rel-url]
 [![Build Status][ci-img]][ci-url]
 [![Code Coverage Status][codecov-img]][codecov-url]
 [![MIT License][license-img]][license-url]
