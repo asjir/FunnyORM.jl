@@ -7,16 +7,16 @@
 
 ## Motivating example
 
-FunSQL.jl allows you to build better queries than, say SQLAlchemy, but it doesn't, and shouldn't, have any Object-Relational Mapping.
-This package intends to provide one, so that you're able to write:
+FunSQL.jl allows you to build better queries than, say SQLAlchemy, but it doesn't provide an Object-Relational Mapping.
+This package does, so that you're able to write:
 ```julia 
 julia> let f(x) = x |> Join(:new => x |> Group(Get.gender_concept_id) |> Select(Agg.max(Get.year_of_birth), Get.gender_concept_id), Fun.and(Get.gender_concept_id .== Get.new.gender_concept_id, Get.year_of_birth .== Get.new.max)) 
        db[Person, f]  
        end
 ```
-Which for each gender will pick the youngest people by yaer, and return `Person` structs for each.
+Which for each gender will pick the youngest people by yaer, and return `Person` struct for each.
 
-These structs generated to be included in your code, so `JET.jl` can do type-checking and `VSCode` can show the definition with fields when you hover over them.
+These structs are generated to be included in your code, so `JET.jl` can do type-checking and `VSCode` can show the definition with fields when you hover over them.
 
 ## Status
 
@@ -43,9 +43,12 @@ After you run this, you VSCode should show you what Person is, and what fields i
 
 
 <details><summary>About defaults</summary>
-If a field can be `Missing`, the generated class will contain default `missing` for it. For the rest no default is set, so you may wish to edit the generated file.</details>
 
+If a field can be `Missing`, the generated class will contain default `missing` for it. For the rest no default is set, so you may wish to edit the generated file.
 
+It will try to link to tablename, which by default is lowercase, pluralised model name. 
+
+</details>
 Now we can query the db: 
 ```julia
 using DataFrames
@@ -60,8 +63,8 @@ Person[month_of_birth=[2, 4]]
 Person[(month_of_birth=2, month_of_birth=4)]
 ```
 
-Under the hood it's FROM .. WHERE ... queries.
-If you want more SQL you can add a second argument and it will work as if your data got piped into it.
+Under the hood it's converted to SQL queries.
+You can add a second argument and it will pass your query into it.
 ```julia
 using FunSQL: Order, Get
 db[Person[month_of_birth=[2, 4]], Order(Get.year_of_birth)]
@@ -86,7 +89,7 @@ This will give you people who had visits that ended before 13th Apr 2008.
 
 For many-to-many relationship you need to have an object for e.g. `PersonVisit` in this case and do `Person[PersonVisit[Visit[...]]]`.
 
-And if you use JET then it will pick up some errors, like field name being wrong here:
+Additionally, if you use JET then it will pick up some errors, like field name being wrong here:
 ```julia
 db[Person[month_of_birth=[2, 4]]][1].year_if_birth
 ```
@@ -103,20 +106,25 @@ Person(db)([(gender_concept_id=8532, month_of_birth=11), (gender_concept_id=1111
 ```
 ### Updating objects
 
-Here you need to use a macro.
+Here you can use a macro:
 
 ```julia
 # grab the latest insert
-newlyinserted = db[Person[gender_concept_id=1111]] |> only
-@update db[newlyinserted] day_of_birth = 10 month_of_birth = 3
-newlyinserted.day_of_birth == 10  # true
+example = db[Person[year_of_birth=1940]] |> first
+@update db[example] day_of_birth = 10 month_of_birth = 3
+example.day_of_birth == 10  # true
 
 # Warning! It only updates the reference you call it with, i.e:
-v = [newlyinserted]
-@update db[newlyinserted] day_of_birth = 15
-newlyinserted.day_of_birth == 15, v[1].day_of_birth == 10  # both true
+old = example
+@update db[example] day_of_birth = 15
+example.day_of_birth == 15, example.day_of_birth == 10  # both true
 ```
 
+Or using `db[model](kwargs)` syntax:
+```julia
+updated = db[example](year_of_birth=1941)
+example.year_of_birth == 1940, updated.year_of_birth == 1941  # both true
+```
 # still TODO:
 
 * db.sqlmap for relationships
