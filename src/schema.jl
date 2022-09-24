@@ -1,4 +1,4 @@
-import FunSQL.SQLDialect
+import FunSQL: SQLDialect
 
 process_sql(s::String) =
     let nothingorcapture(x, idx=2) = isnothing(x) ? nothing : x.captures[idx]
