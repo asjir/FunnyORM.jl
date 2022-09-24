@@ -1,4 +1,4 @@
-process_sql(s::String) =
+process_sql(s::AbstractString) =
     let nothingorcapture(x, idx=2) = isnothing(x) ? nothing : x.captures[idx]
         tname(s) = match(r"(CREATE\s+TABLE\s+\"?)((\w)+)(\"|\s|\()", s) |> nothingorcapture
         pkey(s) =

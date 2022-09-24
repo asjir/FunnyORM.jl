@@ -6,13 +6,14 @@ using FunSQL: From, ReferenceError
 @testset "db operations" begin
     dir = mkdir(tempname())
     db = FunnyORM.DB{SQLite.DB}("$dir/tempdb.db")
-    DBInterface.execute(db.connection,
-        """CREATE TABLE person(
-            Id INT NOT NULL,
-            LastName varchar(255) NOT NULL,
-            Age int,
-            PRIMARY KEY (Id)    
-        );""")
+    person_sql = """CREATE TABLE person(
+        Id INT NOT NULL,
+        LastName varchar(255) NOT NULL,
+        Age int,
+        PRIMARY KEY (Id)    
+    );"""
+    DBInterface.execute(db.connection, person_sql)
+
     DBInterface.execute(db.connection,
         """ALTER TABLE person ADD COLUMN FirstName varchar(255);""")
 
@@ -34,6 +35,7 @@ using FunSQL: From, ReferenceError
             include(FunnyORM.generate_file(db, :Person, tablename=:person, path="$dir/person.jl"))
             true
         end
+        @test FunnyORM.process_sql(person_sql)[2][3] == ["Id", "LastName"]
         @test pk(Person) == :Id
         @test Person(db)(LastName="Bob").LastName == "Bob"
         @test rowtable(db[Person[LastName="Bob"]])[1].LastName == "Bob"
