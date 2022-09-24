@@ -19,7 +19,7 @@ include("schema.jl")
 """DBInterface.connect is too low level for an ORM package"""
 DB{T}(fname::String) where {T} =
     let conn = DBInterface.connect(FunSQL.DB{T}, fname)
-        DB{T}(conn, sqlmap(conn))
+        DB{T}(conn, sqlmap(conn.raw))
     end
 
 include("model.jl")

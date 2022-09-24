@@ -35,7 +35,7 @@ using FunSQL: From, ReferenceError
             include(FunnyORM.generate_file(db, :Person, tablename=:person, path="$dir/person.jl"))
             true
         end
-        @test FunnyORM.process_sql(person_sql)[2][3] == ["Id", "LastName"]
+        @test FunnyORM.process_sql(person_sql)[2][[1, 3]] == ("Id", ["Id", "LastName"])
         @test pk(Person) == :Id
         @test Person(db)(LastName="Bob").LastName == "Bob"
         @test rowtable(db[Person[LastName="Bob"]])[1].LastName == "Bob"
