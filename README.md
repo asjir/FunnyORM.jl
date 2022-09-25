@@ -49,7 +49,8 @@ If a field can be `Missing`, the generated class will contain default `missing` 
 It will try to link to tablename, which by default is lowercase, pluralised model name. 
 
 </details>
-Now we can query the db: 
+Now we can query the db.
+
 ```julia
 using DataFrames
 db[Person[month_of_birth=[2, 4], person_source_value="%F%", year_of_birth=1900:1930]]
