@@ -32,15 +32,15 @@ pk(m::AbstractModel) =
 tablename = Symbol ∘ Inflector.to_plural ∘ lowercase ∘ string
 generate(db::DB, genmodelname::Symbol; tablename::Symbol=tablename(genmodelname)) =  # maybe this can use PRIMARY KEY / FOREIGN KEY for auto pk etc.
     let
-        try
-            From(tablename)
+        res = try
+            db[From(tablename)]
         catch e
             e isa FunSQL.ReferenceError && @error "$tablename not found in the db.
             Try specifying the `gentablename` keyword argument. 
             If the table has just been created, you need to reset the connection with new FunnyORM.DB object."
             rethrow(e)
         end
-        res = db[From(tablename)]
+
         mapped = tablename ∈ keys(db.sqlmap)
         # TODO: also need to generate references at this point
         can_get_pk = mapped && !isnothing(db.sqlmap[tablename][1])
