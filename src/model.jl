@@ -29,9 +29,13 @@ pk(m::AbstractModel) =
 
 ### Generating
 
-tablename = Symbol ∘ Inflector.to_plural ∘ lowercase ∘ string
+tablename = Symbol ∘ Inflector.to_plural ∘ string
 generate(db::DB, genmodelname::Symbol; tablename::Symbol=tablename(genmodelname)) =  # maybe this can use PRIMARY KEY / FOREIGN KEY for auto pk etc.
-    let
+    let lcsymbol = Symbol ∘ lowercase ∘ string
+        (tablename ∉ keys(db.sqlmap) && lcsymbol(tablename) ∈ keys(db.sqlmap)) && begin
+            @info "$tablename not found in the db, but $(lcsymbol(tablename)) yes, so mapping to that"
+            tablename = lcsymbol(tablename)
+        end
         res = try
             db[From(tablename)]
         catch e
