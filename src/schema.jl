@@ -2,12 +2,18 @@ import FunSQL: SQLDialect
 
 process_sql(s::AbstractString) =
     let nothingorcapture(x, idx=2) = isnothing(x) ? nothing : x.captures[idx]
-        tname(s) = match(r"(CREATE\s+TABLE\s+\"?)((\w)+)(\"|\s|\()", s) |> nothingorcapture
-        pkey(s) =
-            let v1 = nothingorcapture(match(r"(PRIMARY\s+KEY\s*\(\s*\[?)((\w)+)\)(\]|\s|$|,)", s))
-                v2 = nothingorcapture(match(r"((^|\()\s*\[?\s*)(\w+)(.*PRIMARY\s+KEY)"m, s))
-                isnothing(v1) ? v2 : v1
-            end
+        nameandpkey = r"(?ix)                   # Ignore case and enable comments
+            \bCREATE\s+TABLE\s+(\w+)\s*   # Match 'CREATE TABLE table_name' and capture table_name
+            \(                            # Match the opening parenthesis
+            (?:                           # Non-capturing group for column definitions
+                \s*(\w+)\s*               # Capture column name
+                (?:\s+[^,\n]+\s*PRIMARY\s+KEY\s*(?:[^,\n]+)?)?  # Match optional 'PRIMARY KEY' column constraint
+                ,?                        # Match the column separator (comma) if present
+            )+                            # Repeat column definitions one or more times
+            \s*\);                        # Match ');' with optional whitespace before it
+        "
+        tname(s) = nothingorcapture(match(nameandpkey, s), 1)
+        pkey(s) = nothingorcapture(match(nameandpkey, s), 2)
         fkeys(s) = Dict(map(x -> x.captures[2] => (x.captures[4], x.captures[6]),
             eachmatch(r"(FOREIGN\s+KEY\s*\(\s*\[?) (\w+) (\]?\s*\)\s*REFERENCES\s+\"?) (\w+) (\"?\s*\(\s*\[?) (\w+) (\]?\s*\)\s*) ($|,|\))"xm, s)))
         notnulls(s) = map(x -> x.captures[3],

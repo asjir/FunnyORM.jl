@@ -47,7 +47,7 @@ generate(db::DB, genmodelname::Symbol; tablename::Symbol=tablename(genmodelname)
 
         mapped = tablename ∈ keys(db.sqlmap)
         # TODO: also need to generate references at this point
-        can_get_pk = mapped && !isnothing(db.sqlmap[tablename][1])
+        can_get_pk = mapped && db.sqlmap[tablename][1] ∈ db.connection.catalog[tablename].column_set
         allowsmissing(name) = mapped ? string(name) ∉ db.sqlmap[tablename][3] : true
         can_get_pk || @warn "couldn't infer pk for table $genmodelname, defaulting to $(first(res.names))"
         structdef = :(struct $genmodelname <: AbstractModel end)
@@ -74,8 +74,12 @@ generate_string(db::DB, genmodelname::Symbol; tablename::Symbol=tablename(genmod
 """
 Using the databsase schema
 """
-generate_file(db::DB, genmodelname::Symbol; tablename::Symbol=tablename(genmodelname), path="models/$tablename.jl") =
+generate_file(db::DB, genmodelname::Symbol; tablename::Symbol=tablename(genmodelname), path="models/$tablename.jl", force=false) =
     let _ = mkpath(dirname(path))
+        if ispath(path) && !force
+            @error "path $path exists, use `force=true` to overwrite"
+            return
+        end
         write(path, generate_string(db, genmodelname; tablename))
         path
     end
