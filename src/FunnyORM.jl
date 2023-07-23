@@ -51,12 +51,21 @@ struct TableQuery{T<:AbstractModel}
     kwargs::Dict{Symbol,Any}
 end
 
+ismodelvec(v) = false
+ismodelvec(v::Vector{U}) where {U<:AbstractModel} = true
 Base.getindex(::Type{T}, args...; kwargs...) where {T<:AbstractModel} =
     let orclauses = collect(filter(x -> x isa NamedTuple, args)),
         tqs = collect(filter(x -> x isa TableQuery, args)),
-        pks = cat(filter(x -> x isa Union{Vector,Integer,UUID}, args)..., dims=1),
+        pks = cat(
+            filter(!ismodelvec,
+                filter(x -> x isa Union{Vector,Integer,UUID}, args))...,
+            dims=1),
+        models = collect(filter(x -> x isa AbstractModel, args)),
+        modelss = collect(filter(ismodelvec, args)),
         kwargs = Dict{Symbol,Any}(kwargs)
 
+        push!(pks, map(m -> getfield(m, pk(T)), models)...)
+        push!(pks, map(models -> map(m -> getfield(m, pk(T)), models), modelss)...)
         if !isempty(pks)
             pk(T) ∈ keys(kwargs) && @error "ambiguous primary key, you passed both:" pks kwargs[pk(T)]
             kwargs[pk(T)] = cat(pks..., dims=1)
