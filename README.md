@@ -135,6 +135,7 @@ example.year_of_birth == 1940, updated.year_of_birth == 1941  # both true
 * UUIDs, e.g. with PSQL
 * get_sqls for dbs other than sqlite
 * dates
+* [pagination](https://medium.com/swlh/sql-pagination-you-are-probably-doing-it-wrong-d0f2719cc166)
   
 [docs-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
 [docs-dev-url]: https://asjir.github.io/FunnyORM.jl/dev/
