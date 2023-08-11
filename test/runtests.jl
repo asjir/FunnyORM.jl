@@ -3,6 +3,9 @@ import Tables: rowtable
 
 using FunSQL: From, ReferenceError
 
+using Aqua, LaTeXStrings
+Aqua.test_all(FunnyORM, ambiguities=(; exclude=[LaTeXStrings.getindex]))
+
 @testset "db operations" begin
     dir = mkdir(tempname())
     db = FunnyORM.DB{SQLite.DB}("$dir/tempdb.db")

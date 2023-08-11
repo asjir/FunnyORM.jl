@@ -1,6 +1,6 @@
 import MacroTools: @capture, postwalk
 
-export AbstractModel, @allowmissing, nullable, pk
+export AbstractModel, pk
 
 """AbstractModel is the base type for your models.
 You should not instantiate your model manually.

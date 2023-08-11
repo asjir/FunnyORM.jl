@@ -4,6 +4,8 @@
 [![Build Status][ci-img]][ci-url]
 [![Code Coverage Status][codecov-img]][codecov-url]
 [![MIT License][license-img]][license-url]
+[![Aqua QA](https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
+
 
 ## Motivating example
 
