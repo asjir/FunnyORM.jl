@@ -4,6 +4,8 @@
 [![Build Status][ci-img]][ci-url]
 [![Code Coverage Status][codecov-img]][codecov-url]
 [![MIT License][license-img]][license-url]
+[![Aqua QA](https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
+
 
 ## Motivating example
 
@@ -14,16 +16,19 @@ julia> let f(x) = x |> Join(:new => x |> Group(Get.gender_concept_id) |> Select(
        db[Person, f]  
        end
 ```
-Which for each gender will pick the youngest people by yaer, and return `Person` struct for each.
+Which for each gender will pick the youngest people by year, and return `Person` struct for each.
 
-These structs are generated to be included in your code, so `JET.jl` can do type-checking and `VSCode` can show the definition with fields when you hover over them.
-
+These structs are generated to be included in your code, so `VSCode` can show the definition with fields when you hover over them. And `JET.jl` can do type-checking, e.g. picking up the typo here:
+```julia
+db[Person[month_of_birth=[2, 4]]][1].year_if_birth
+```
 ## Status
 
 * Only supports Integer ids.
 * Only supports SQLite.
+* Errors with Transducers.jl
 
-## Walkthroough.
+## Walkthrough
 
 We start with the example DB that FunSQL provides: 
 
@@ -55,17 +60,16 @@ Now we can query the db.
 using DataFrames
 db[Person[month_of_birth=[2, 4], person_source_value="%F%", year_of_birth=1900:1930]]
 ```
-AbstractVector maps to IN, AbstractRange and Pair to BETWEEN and AbstractString to LIKE if it contains _ or $.
-Otherwise it's =.
+If you know SQL a Vector is `IN`, AbstractRange and Pair `BETWEEN` and AbstractString to either `LIKE` if it contains _ or $, or `=`.
 
-Also a named tuple in arguments is treated as an or, so in this case the following are equivalent:
+Also a named tuple in arguments is treated as an `OR`, so in this case the following are equivalent:
 ```julia
 Person[month_of_birth=[2, 4]]
 Person[(month_of_birth=2, month_of_birth=4)]
 ```
 
 Under the hood it's converted to SQL queries.
-You can add a second argument and it will pass your query into it.
+You can add a second argument to `getindex` and it will pass your query into it.
 ```julia
 using FunSQL: Order, Get
 db[Person[month_of_birth=[2, 4]], Order(Get.year_of_birth)]
@@ -76,9 +80,12 @@ To skip creation of objects you can replace `,` with `|>`:
 using FunSQL: Order, Get
 db[Person[month_of_birth=[2, 4]] |> Order(Get.year_of_birth)] |> DataFrame
 ```
-And be able to get any fields aggregations with sql etc.
+And be able to use FunSQL to further, e.g:
+* only select a subset fields,
+* join tables
+* aggregate
 
-You can also query by relations, though `contraint ... foreign key...` is not supported yet - the column names simply need to match.
+You can also query by relations, though the column names simply need to match. `contraint ... foreign key...` is not supported yet. Here's an example:
 
 ```julia
 FunnyORM.generate_file(db, :Visit, tablename=:visit_occurrence)
@@ -86,14 +93,10 @@ include("models/visit_occurrence.jl")
 
 db[Person[Visit[visit_end_date="" => "2008-04-13"]]]
 ```
-This will give you people who had visits that ended before 13th Apr 2008.
+This will give you people who had visits that ended before 13th Apr 2008 (inclusive).
 
-For many-to-many relationship you need to have an object for e.g. `PersonVisit` in this case and do `Person[PersonVisit[Visit[...]]]`.
-
-Additionally, if you use JET then it will pick up some errors, like field name being wrong here:
-```julia
-db[Person[month_of_birth=[2, 4]]][1].year_if_birth
-```
+For many-to-many relations you need to have an object for e.g. `PersonVisit` in this case and do `Person[PersonVisit[Visit[...]]]`. 
+Also if you already had a `vis::Visit` then `vis == db[vis]` so you can write `Person[PersonVisit[vis]]` to get people that went on that visit.
 
 ## Mutating:
 
@@ -129,10 +132,10 @@ example.year_of_birth == 1940, updated.year_of_birth == 1941  # both true
 # still TODO:
 
 * db.sqlmap for relationships
-* maybe? db.sqlmap for Person -> Person,person,Persons,persons, i.e. multiple gentablenames
 * UUIDs, e.g. with PSQL
 * get_sqls for dbs other than sqlite
 * dates
+* [pagination](https://medium.com/swlh/sql-pagination-you-are-probably-doing-it-wrong-d0f2719cc166)
   
 [docs-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
 [docs-dev-url]: https://asjir.github.io/FunnyORM.jl/dev/
